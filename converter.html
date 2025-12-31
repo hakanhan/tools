@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forti Converter Pro | Infralix</title>
+    <title>FortiPort Converter Pro | Infralix</title>
     <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAADHElEQVR4nO2WX0hTYRjGn3PO2bZtbtM5Z5rmJc1LmpeYmZUXFM0uRpdCG1mY2cXohxdFUEQUlBd9KIIioqAkKAvLKLtYmKWZSZmXvJSXvOY1b2fbtm7vLrQD5mDbnLPTh/rBB8/7fu/zPO/7vu97gH8Z/zIURcHhcKDRaKBQKP4JhUIBjUYDh8MBiqKIAhRFQSKRQCqVQiKR+F8oFBJIpVJQFEUIoCgKEokEYrEYIpHorxGJRBCLxZBIJCQAlmUhEokgFAohEAj8JwQCAYRCIViWJQGwLAuBQAAejwcej0dK4HA44PF4EAgEJACWZcHj8cDj8cDlckkLXC4XXC4XLMuSALhcLmiaBlEUwefzSQl8Ph9EUQRFUSQAiqJA0zRomiYs8Hg8EAQBmqZJADRNg6Zp8Hg88Hg8UgKPxwNBEEDTNAmApmkQxH8r8DFCUZRfmY8R/gSgaRp/ZJl3AoGAoigIhUIQCoUQCoUk9VIU9T8BLMtCJBJBKBRCJBKRpB6Kov4nAMuy/lsgJiYGcXFxiI+PR3x8POLi4lYVHx+fFhERkRYZGZkWGRmZFhYWlhYWFpYaHh6eGhYWlhoeHp4aFhamFwqFepFIpBcKhXqhUKgXCARpHA4nDUAmk+H58+d4/vw57t+/j8XFxVU1Njaisb ERra2taGhowPz8PObm5jA3N4fGxkZf+vr6elRVVaGyshKVlZW+8rq6OlRXV6O6uhpVVVW+9A0NDWhoaEBDQwPq6+t96evr61FbW4va2lrU1NT40tfW1vrSV1dX+9JXV1ejsrISFRUVqKioWFVMTExlZWVl/G/Q0NCAyspK/jeoqalBZWUl/xtUV1ejoqJiRcXFxSguLkZBQQEKCgpQUFCAgoICFBQUIDs7G9nZ2cjJyUFOTg4yMzORmZmJjIwMZGRkIC0tDWlpaUhNTUVqaipSUlKQkpKC5ORkJCcnIykpCUlJSUhMTERiYiLi4+MRHx+P2NhYxMbGIiYmBtHR0YiOjkZUVBSioqIQGRmJyMhIREZGwm63W6xWq9lqtZqsVqvBYrEYrFar2Wq1mq1Wq9lqtVoMer0+VafTRf4rDA0NwWq1qiorK6U+pxpoNBrIZDLIZDLIZDJIpdL5ycnJfbFotL9Op9PzeDw9n8/X5+fn6/Py8vS5ubn63Nxc/czMzNaZmZmtU1NTWycnJ7dOTExsnZiY2D4xMbFjYmJix/j4+A4AeQDyVvhf8QPhPvPYTB2MowAAAABJRU5ErkJggg==">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -582,13 +582,15 @@ EMERGENCY CONTACTS:
                         setMapping(m);
                         setUnused(findUnused(p));
                         
-                        // Check UTF-8 issues
-                        const utf8Probs = validateUTF8Objects(p);
-                        setUtf8Issues(utf8Probs.map(issue => ({ ...issue, apply: true })));
-                        
-                        // Detect HA configuration
+                        // Detect HA configuration (fast)
                         const ha = detectHA(text);
                         setHaInfo(ha);
+                        
+                        // Check UTF-8 issues in background (don't block UI)
+                        setTimeout(() => {
+                            const utf8Probs = validateUTF8Objects(p);
+                            setUtf8Issues(utf8Probs.map(issue => ({ ...issue, apply: true })));
+                        }, 100);
                     }
                 };
                 reader.readAsText(file);
@@ -744,47 +746,15 @@ EMERGENCY CONTACTS:
                                     )}
                                     
                                     {utf8Issues && utf8Issues.length > 0 && (
-                                        <div className="utf8-issues-section">
-                                            <h3 style={{marginBottom:'1rem',color:'var(--error)'}}>⚠️ UTF-8 Object Name Issues Detected</h3>
-                                            <p style={{marginBottom:'1rem',fontSize:'0.9rem'}}>
-                                                Found {utf8Issues.length} objects with non-UTF8 characters (Turkish, Arabic, Chinese, etc.). 
-                                                These will cause import failures on newer FortiOS versions.
-                                            </p>
-                                            <table className="object-rename-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Original Name</th>
-                                                        <th>Suggested Name</th>
-                                                        <th>Issue</th>
-                                                        <th>Apply Fix</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {utf8Issues.slice(0, 10).map((issue, idx) => (
-                                                        <tr key={idx}>
-                                                            <td>{issue.original}</td>
-                                                            <td style={{color:'var(--success)'}}>{issue.suggested}</td>
-                                                            <td>{issue.issue}</td>
-                                                            <td>
-                                                                <input 
-                                                                    type="checkbox" 
-                                                                    checked={issue.apply}
-                                                                    onChange={(e) => {
-                                                                        const newIssues = [...utf8Issues];
-                                                                        newIssues[idx].apply = e.target.checked;
-                                                                        setUtf8Issues(newIssues);
-                                                                    }}
-                                                                />
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                            {utf8Issues.length > 10 && (
-                                                <p style={{marginTop:'0.5rem',fontSize:'0.85rem',color:'var(--text-muted)'}}>
-                                                    ... and {utf8Issues.length - 10} more. Full list in export report.
-                                                </p>
-                                            )}
+                                        <div className="alert alert-warning">
+                                            <span>⚠️</span>
+                                            <div>
+                                                <strong>UTF-8 Object Name Issues Detected</strong>
+                                                <div style={{marginTop:'0.5rem',fontSize:'0.9rem'}}>
+                                                    Found {utf8Issues.length} objects with non-UTF8 characters (Turkish, Arabic, Chinese, etc.). 
+                                                    These will be automatically fixed during conversion. Details in Step 2.
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -886,6 +856,15 @@ EMERGENCY CONTACTS:
                         {step === 2 && parsed && (
                             <div className="card">
                                 <h2 className="card-title">🔄 Port Mapping</h2>
+                                {!targetModel && !detectedTgt?.model && (
+                                    <div className="alert alert-error">
+                                        <span>❌</span>
+                                        <div>
+                                            <strong>Target Model Not Selected!</strong>
+                                            <div>Please go back to Step 1 and either upload target config or select target model from dropdown.</div>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="stats-grid">
                                     <div className="stat-card"><div className="stat-value">{parsed.usedPorts.length}</div><div className="stat-label">Ports</div></div>
                                     <div className="stat-card"><div className="stat-value">{Object.values(mapping).filter(v=>v).length}</div><div className="stat-label">Mapped</div></div>
@@ -899,6 +878,19 @@ EMERGENCY CONTACTS:
                                         <div><strong>Unused Objects</strong><div>{totalUnused} objects not referenced. See export report.</div></div>
                                     </div>
                                 )}
+                                {utf8Issues && utf8Issues.length > 0 && (
+                                    <div className="alert alert-warning">
+                                        <span>🔤</span>
+                                        <div>
+                                            <strong>UTF-8 Fixes Will Be Applied</strong>
+                                            <div style={{marginTop:'0.5rem',fontSize:'0.9rem'}}>
+                                                {utf8Issues.filter(i=>i.apply).length} of {utf8Issues.length} object names will be sanitized. 
+                                                Examples: {utf8Issues.slice(0,3).map(i => `"${i.original}" → "${i.suggested}"`).join(', ')}
+                                                {utf8Issues.length > 3 && '...'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <table className="mapping-table">
                                     <thead><tr><th>Source Port</th><th>Usage</th><th>Target Port</th></tr></thead>
                                     <tbody>
@@ -909,10 +901,17 @@ EMERGENCY CONTACTS:
                                                 <td>
                                                     <div className="select-wrapper">
                                                         <select value={mapping[port]||''} onChange={(e) => setMapping({...mapping, [port]:e.target.value})}>
-                                                            <option value="">Select...</option>
-                                                            {FORTIGATE_MODELS[targetModel||detectedTgt?.model]?.ports.map(p => (
-                                                                <option key={p} value={p}>{p}</option>
-                                                            ))}
+                                                            <option value="">Select target port...</option>
+                                                            {(() => {
+                                                                const tm = targetModel || detectedTgt?.model;
+                                                                const model = FORTIGATE_MODELS[tm];
+                                                                if (!model) {
+                                                                    return <option disabled>⚠️ Select target model first</option>;
+                                                                }
+                                                                return model.ports.map(p => (
+                                                                    <option key={p} value={p}>{p}</option>
+                                                                ));
+                                                            })()}
                                                         </select>
                                                     </div>
                                                 </td>
